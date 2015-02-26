@@ -4,5 +4,7 @@
 * KNN
 * Decision Tree
 * Naive Bayes
+* SVM
 * Logistic Regres
+* Apriori algorithm
 * Spelling Corrector
