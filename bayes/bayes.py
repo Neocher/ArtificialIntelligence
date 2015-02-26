@@ -79,13 +79,56 @@ def train_naive_bayes(train_matrix, train_category):
     return p0_vec, p1_vec, p_abusive
 
 
+def train_naive_bayes_comp(train_matrix, train_category):
+    """
+    获得一个数据被归为某类的概率及已知被归为某类某个特征出现的概率的对数
+    :param train_matrix:列表，列表的每个元素是一个列表，该条数据有这个特征则这个列表中元素为1，否则为0
+    :param train_category:列表，元素值为分类结果
+    :return p_vec:列表，列表的每个元素是一个列表，每个元素为浮点数，是已知被归为某一类某个特征出现的概率的对数
+    :return p_abusive:列表，每个元素为浮点数，被归为某类的概率
+    """
+    num_train_set = len(train_matrix)
+    num_attribute = len(train_matrix[0])
+    sum_of_attribute = zeros((1, 10))
+    for i in range(0, num_train_set):
+        sum_of_attribute[0][train_category[i]] += 1
+    p_abusive = list(sum_of_attribute[0] / num_train_set)
+    p_num = ones((10, num_attribute))
+    for i in range(0, num_train_set):
+        p_num[train_category[i]] += train_matrix[i]
+        # print train_matrix[i]
+    p_vec = zeros((10, num_attribute))
+    for i in range(0, 10):
+        p_vec[i] = log(p_num[i] / (sum_of_attribute[0][i] + num_attribute))
+    p_vec = list(p_vec)
+    return p_vec, p_abusive
+
+
+def classify_naive_bayes_comp(vec_to_classify, p_vec, p_abusive):
+    """
+    将某篇文章进行分类
+    :param vec_to_classify:列表，这篇文章的特征向量
+    :param p_vec:列表，列表的每个元素是一个列表，每个元素为浮点数，是已知被归为某一类某个特征出现的概率的对数
+    :param p_abusive:列表，每个元素为浮点数，被归为某类的概率
+    :return:整数，归类的结果
+    """
+    l = []
+    max = 0
+    for i in range(0, len(p_abusive)):
+        p = sum(vec_to_classify * p_vec[i]) + log(p_abusive[i])
+        l.append(p)
+        if (p > l[max]):
+            max = i
+    return max
+
+
 def classify_naive_bayes(vec_to_classify, p0_vec, p1_vec, p_class1):
     """
     将某篇文章进行分类
     :param vec_to_classify:列表，这篇文章的特征向量
     :param p0_vec:列表，每个元素为浮点数，是已知被归为第一类某个特征出现的概率的对数
     :param p1_vec:列表，每个元素为浮点数，是已知被归为第二类某个特征出现的概率的对数
-    :param p_class1:浮点数，被归为某类的概率
+    :param p_class:浮点数，被归为某类的概率
     :return:整数，归类的结果
     """
     p1 = sum(vec_to_classify * p1_vec) + log(p_class1)
@@ -135,12 +178,60 @@ def spam_text():
         train_mat.append(bag_of_words_to_vec(vocab_list, doc_list[doc_index]))
         train_classes.append(class_list[doc_index])
     p0_vec, p1_vec, p_spam = train_naive_bayes(array(train_mat), array(train_classes))
+    print p0_vec
     error_count = 0
     for doc_index in test_set:
         word_vec = bag_of_words_to_vec(vocab_list, doc_list[doc_index])
         if classify_naive_bayes(array(word_vec), p0_vec, p1_vec, p_spam) != class_list[doc_index]:
             error_count += 1
     print 'the error rate is: ', float(error_count) / len(test_set)
+
+
+def sign(i):
+    if int(i) > 100:
+        return 1
+    else:
+        return 0
+
+
+def digit_recognizer():
+    """
+    分类数字
+    """
+    train_mat = []
+    train_classes = []
+    fr = open('train.csv')
+    fr.readline()
+    for line in fr.readlines():
+        line_array = line.strip().split(',')
+        train_classes.append(int(line_array[0]))
+        train_data = []
+        for i in range(1, len(line_array)):
+            train_data.append(sign(line_array[i]))
+        train_mat.append(train_data)
+    p_vec, p_spam = train_naive_bayes_comp(array(train_mat), array(train_classes))
+    # print p_vec[0]
+    fr = open('train.csv')
+    fr.readline()
+    fw = open('result.csv', 'w')
+    # fw.write('ImageId,Label\n')
+    j = 0
+    error = 0
+    for line in fr.readlines():
+        j += 1
+        line_array = line.strip().split(',')
+        test_data = []
+        for i in range(1, len(line_array)):
+            test_data.append(sign(line_array[i]))
+        result = classify_naive_bayes_comp(test_data, p_vec, p_spam)
+        label = train_classes[j - 1]
+        if label != result:
+            error += 1
+            fw.write(str(label) + ',' + str(result) + '\n')
+    print error
+        # fw.write(str(j) + ',' + str(classify_naive_bayes_comp(test_data, p_vec, p_spam)) + '\n')
+        # print classify_naive_bayes_comp(test_data, p_vec, p_spam)
+    fw.close()
 
 
 def calc_most_freq(vocab_list, full_text):
@@ -313,9 +404,12 @@ def local_words(feed1, feed0):
 
 
 def main():
+    '''
     ny = feedparser.parse('http://newyork.craigslist.org/stp/index.rss')
     sf = feedparser.parse('http://sfbay.craigslist.org/stp/index.rss')
     local_words(ny, sf)
+    '''
+    digit_recognizer()
 
 
 if __name__ == '__main__':
